@@ -1,42 +1,40 @@
-name: Deploy to ECR
+  name: Push the Docker image to AWS ECR Repo
+  on:
+    push:
+      branches:
+        - INTERN-792
+  jobs:
+    Build:
+      name: Build
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v2
 
-on:
-  push:
-    branches:
-      - INTERN-792
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v1
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+            aws-region: us-east-1
 
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+        - name: Login to Amazon ECR
+          id: login-ecr
+          uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: us-east-1
+        - name: Get commit hash
+          id: get-commit-hash
+          run: echo "::set-output name=commit-hash::$(git rev-parse --short HEAD)"
+        - name: Get timestamp
+          id: get-timestamp
+          run: echo "::set-output name=timestamp::$(date +'%Y-%m-%d-%H-%M')"
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build, tag, and push the Docker image
-        env:
-          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          # Build the Docker image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          # Push the Docker image to ECR
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Post-deployment actions
-        run: |
-          echo "Docker image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG built and pushed successfully."
-
+        - name: Build, tag, and push the image to Amazon ECR
+          id: build-image
+          env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
+          run: |
+            docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
