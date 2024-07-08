@@ -6,7 +6,7 @@ on:
   
 jobs:
   ECR_ECS_Deployment:
-    name: Build Docker Image And Push To ECR And Deploy To ECS
+    name: Build Docker Image And Push To ECR 
     runs-on: ubuntu-latest  
     steps:  
         - name: Checkout
