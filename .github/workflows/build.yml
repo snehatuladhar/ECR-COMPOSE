@@ -1,39 +1,35 @@
-  name: Push the Docker image to AWS ECR Repo
-  on:
-    push:
-      branches:
-        - INTERN-792
-  jobs:
-    Build:
-      name: Build
-      runs-on: ubuntu-latest
-      steps:
+name: "ECR-ECS-Deployment"
+on:
+  push:
+    branches:
+      - INTERN-792
+  
+jobs:
+  ECR_ECS_Deployment:
+    name: Build Docker Image And Push To ECR And Deploy To ECS
+    runs-on: ubuntu-latest  
+    steps:  
         - name: Checkout
-          uses: actions/checkout@v2
-
-        - name: Configure AWS credentials
+          uses: actions/checkout@v2    
+          
+        - name: Setup AWS ECR Details
           uses: aws-actions/configure-aws-credentials@v1
           with:
             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
             aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
             aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-            aws-region: us-east-1
+            aws-region: ${{secrets.AWS_REGION}}
 
         - name: Login to Amazon ECR
-          id: login-ecr
+          id: login-pf-aws-ecr
           uses: aws-actions/amazon-ecr-login@v1
-
-        - name: Get commit hash
-          id: get-commit-hash
-          run: echo "::set-output name=commit-hash::$(git rev-parse --short HEAD)"
-        - name: Get timestamp
-          id: get-timestamp
-          run: echo "::set-output name=timestamp::$(date +'%Y-%m-%d-%H-%M')"
-
-        - name: Build, tag, and push the image to Amazon ECR
-          id: build-image
+          
+        - name: Build and push the tagged docker image to Amazon ECR
+          id : containerImage
           env:
-            IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
+            ECR_REGISTRY: ${{ steps.login-pf-aws-ecr.outputs.registry }}
+            ECR_REPOSITORY: ${{secrets.ECR_REPOSITORY}}
+            IMAGE_TAG: latest
           run: |
             docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
