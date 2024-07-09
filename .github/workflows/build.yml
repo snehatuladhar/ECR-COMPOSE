@@ -2,7 +2,7 @@ name: "ECR-ECS-Deployment"
 on:
   push:
     branches:
-      - INTERN-792
+      - 792-intern
   
 jobs:
   ECR_ECS_Deployment:
